@@ -5,7 +5,6 @@ const Promise = require('bluebird');
 const config = require('../../secrets');
 const processTweet = require('../utils/processTweet')
 
-
 const T = new Twit({
     consumer_key: process.env.CONSUMER_KEY,
     consumer_secret: process.env.CONSUMER_SECRET,
@@ -49,3 +48,66 @@ stream.on('tweet', (newTweet) => {
 stream.on('limit', (message) => {
     console.log('LIMIT', message);
 })
+
+removeLeastRTd = (tweetsArr) => {
+    return tweetsArr.filter(tweet => {
+        return tweet.retweet_count >= 5;
+    });
+}
+
+sortByRTs = (tweetsArr) => {
+    return tweetsArr.sort((a, b) => {
+        return b.retweet_count - a.retweet_count;
+    });
+}
+
+getUsersFromRTs = (tweetsArr) => {
+    let retweetedUsers = [];
+
+    // Get Promise for RTers
+    return Promise.map(tweetsArr, tweet => {
+        return T.get(`statuses/retweeters/ids`, {id: tweet.id_str})
+    })
+    .then(foundUsers => {
+        foundUsers.forEach(foundUser => {
+            if (foundUser.data.errors) throw foundUser.data.errors
+            retweetedUsers = retweetedUsers.concat(foundUser.data.ids);
+        })
+        return retweetedUsers;
+    })
+    .catch(console.error)
+}
+
+getTweetsFromRTUsers = (usersArr, term) => {
+    const termLower = term.toLowerCase();
+    return Promise.map(usersArr, user => {
+        return T.get('statuses/user_timeline', {user_id: user.id_str, include_rts: false, count: 10})
+    })
+    .then(foundTweets => {
+        console.log(foundTweets);
+        return foundTweets.filter(foundTweet => {
+            if (foundTweet.truncated) {
+                return foundTweet.extended_tweet.full_text.toLowerCase() === termLower;
+            }
+            else {
+                return foundTweet.text.toLowerCase() === termLower;
+            }
+        }).sort((a, b) => {
+            return b.retweet_count - a.retweet_count;
+        })
+        .splice(0, 1);
+    })
+}
+
+// If tweets from API are RTs or Quoted Tweets we want to go
+// From the original tweet so we'll have a good origin point
+// from which we can expand
+scrubTweet = (tweet) => {
+    if (tweet.retweeted_status && tweet.retweeted_status.retweet_count) {
+        tweet = tweet.retweeted_status;
+    }
+    else if (tweet.quoted_status && tweet.quoted_status.retweet_count) {
+        tweet = tweet.quoted_status;
+    }
+    return tweet;
+}

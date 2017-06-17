@@ -1,3 +1,11 @@
 import io from 'socket.io-client'
 
-export default io(window.location.origin);
+const clientSocket = io(window.location.origin);
+
+(() => {
+    clientSocket.on('tweet', (tweet) => {
+        console.log(tweet);
+    })
+})();
+
+export default clientSocket;

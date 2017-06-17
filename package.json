@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/language": "^0.10.5",
     "axios": "^0.15.3",
     "bluebird": "^3.5.0",
     "body-parser": "^1.16.1",

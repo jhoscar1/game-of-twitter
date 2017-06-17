@@ -27,6 +27,9 @@ class Main extends Component {
   onSubmit(event) {
       event.preventDefault();
       clientSocket.emit('term', this.state.term)
+      this.setState({
+        term: ''
+      })
   }
 
   render() {

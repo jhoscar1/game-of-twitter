@@ -9,6 +9,8 @@ const store = new SequelizeStore({ db });
 const PORT = process.env.PORT || 8080;
 const app = express();
 const socketio = require('socket.io');
+const Twitter = require('./api/twitter').Twitter;
+const scrubTweet = require('./api/twitter').scrubTweet;
 module.exports = app;
 
 if (process.env.NODE_ENV === 'development') require('../secrets');
@@ -43,8 +45,26 @@ const io = socketio(server);
 
 io.sockets.on('connection', (socket) => {
   console.log('connected');
-  socket.on('term' , (term) => {
-    console.log(term);
+  socket.on('term', (term) => {
+    // const stream = Twitter.stream('statuses/filter', {track: term, language: 'en'});
+
+    Twitter.get('search/tweets', {q: term, count:200, exclude: "retweets"}, (err, data, response) => {
+        if (err) console.error(err);
+        const locatedTweets = data.statuses.filter((tweet) => {
+          if (tweet.coordinates && tweet.coordinates !== null) {
+            return tweet
+          }
+        })
+        socket.emit('tweet', locatedTweets)
+    })  
+
+    // stream.on('tweet', (newTweet) => {
+    //   const scrubbedTweet = scrubTweet(newTweet);
+
+    //   //if (newTweet.coordinates && data.coordinates !== null) {
+    //   socket.emit('tweet', scrubbedTweet)
+    //   //}
+    // })
   })
   socket.on('disconnect', () => {
     console.log('disconnected...');

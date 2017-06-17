@@ -3,6 +3,7 @@ const router = express.Router();
 const Twit = require('twit');
 const Promise = require('bluebird');
 const config = require('../../secrets');
+const Google = require('./google');
 
 const Twitter = new Twit({
     consumer_key: process.env.CONSUMER_KEY,
@@ -12,26 +13,52 @@ const Twitter = new Twit({
     timeout_ms: 60 * 1000
 })
 
-const twitRouter = (io) => {
 
-    router.get('/search/:term', (req, res, next) => {
-        Twitter.get('search/tweets', {q: req.params.term, count:1, exclude: "retweets"}, (err, data, response) => {
-            if (err) console.error(err);
-            // Data Statuses
-            console.log(data.statuses);
-            res.send(data.statuses);
-        })  
-    })
-
-    router.get('/stream/:term', (req, res, next) => {
-        const stream = Twitter.stream('statuses/filter', {track: req.params.term, language: 'en'})
-
-        stream.on('tweet', (newTweet) => {
-            io.sockets.emit('new tweet', newTweet);
+router.get('/search/:term', (req, res, next) => {
+    Twitter.get('search/tweets', {q: req.params.term, count:100, exclude: "retweets"}, (err, data, response) => {
+        if (err) console.error(err);
+        // Data Statuses
+        const locatedTweets = data.statuses.map(tweet => {
+            if (tweet.user.location && tweet.user.location !== undefined) {
+                return tweet.user.location
+            }
         })
-    })
 
-}
+        Promise.map(data.statuses, tweet => {
+            console.log('hi');
+            return Google.detectSentiment(tweet.text)
+            .then((results) => {
+                //console.log('logged results', results);
+                const sentiment = results[0];
+                const analysis = {
+                    tweet: tweet.text,
+                    score: sentiment.score,
+                    magnitude: sentiment.magnitude
+                }
+                return analysis;
+            })
+            .catch(console.error)
+        })
+        .then(sentiments => {
+            res.json(sentiments);
+            console.log('what I want', sentiments);
+        })
+        
+    })  
+})
+
+router.get('/tweet/country', (req, res, next) => {
+
+})
+
+router.get('/stream/:term', (req, res, next) => {
+    const stream = Twitter.stream('statuses/filter', {track: req.params.term, language: 'en'})
+
+    stream.on('tweet', (newTweet) => {
+        if (newTweet.coordinates) console.log(newTweet);
+    })
+})
+
 
 const streamedTweets = [];
 
@@ -132,4 +159,8 @@ const scrubTweet = (tweet) => {
     return tweet;
 }
 
-module.exports = twitRouter;
+module.exports = {
+    Twitter,
+    scrubTweet,
+    router
+};

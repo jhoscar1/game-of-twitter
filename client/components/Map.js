@@ -4,9 +4,6 @@ import clientSocket from '../socket';
 class Map extends Component {
     constructor(props) {
         super(props);
-        this.state = {
-            zoom: 4
-        }
     }
 
     componentDidMount() {
@@ -15,12 +12,6 @@ class Map extends Component {
             center: {lat: 40.750120, lng: -73.985099}
         })
         console.log(map)
-    }
-
-    handleZoomChange() {
-        this.setState({
-            zoom: this.map.getZoom()
-        })
     }
 
     render() {

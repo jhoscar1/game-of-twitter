@@ -3,9 +3,8 @@ const router = express.Router();
 const Twit = require('twit');
 const Promise = require('bluebird');
 const config = require('../../secrets');
-const processTweet = require('../utils/processTweet')
 
-const T = new Twit({
+const Twitter = new Twit({
     consumer_key: process.env.CONSUMER_KEY,
     consumer_secret: process.env.CONSUMER_SECRET,
     access_token: process.env.ACCESS_TOKEN,
@@ -13,60 +12,80 @@ const T = new Twit({
     timeout_ms: 60 * 1000
 })
 
-const stream = T.stream('statuses/filter', {track: 'MAGA', language: 'en'})
+const twitRouter = (io) => {
+
+    router.get('/search/:term', (req, res, next) => {
+        Twitter.get('search/tweets', {q: req.params.term, count:1, exclude: "retweets"}, (err, data, response) => {
+            if (err) console.error(err);
+            // Data Statuses
+            console.log(data.statuses);
+            res.send(data.statuses);
+        })  
+    })
+
+    router.get('/stream/:term', (req, res, next) => {
+        const stream = Twitter.stream('statuses/filter', {track: req.params.term, language: 'en'})
+
+        stream.on('tweet', (newTweet) => {
+            io.sockets.emit('new tweet', newTweet);
+        })
+    })
+
+}
 
 const streamedTweets = [];
 
-stream.on('tweet', (newTweet) => {
-    newTweet = processTweet.scrubTweet(newTweet);
+// stream.on('tweet', (newTweet) => {
+    // console.log(newTweet);
+    // newTweet = scrubTweet(newTweet);
 
-    if (!streamedTweets.length
-        ||
-        !streamedTweets.filter((tweet) => {
-            return tweet.id === newTweet.id;
-        }).length)
-    {
-            streamedTweets.push(newTweet);
-    }
+    // if (!streamedTweets.length
+    //     ||
+    //     !streamedTweets.filter((tweet) => {
+    //         return tweet.id === newTweet.id;
+    //     }).length)
+    // {
+    //         streamedTweets.push(newTweet);
+    // }
     
-        console.log(streamedTweets.length);
+    //     console.log(streamedTweets.length);
 
-    if (streamedTweets.length >= 3) {
-        // console.log(streamedTweets);
-        let users = [];
-        const promiseForUsers = processTweet.getUsersFromRTs(streamedTweets);
-        promiseForUsers
-        .then((rtUsers) => {
-            const moreTweets = processTweet.getTweetsFromRTUsers(rtUsers.splice(0, 10), 'MAGA');
-            console.log(moreTweets);
-            stream.stop();
-        })
-        .catch(console.error);
-    }
-})
+    // if (streamedTweets.length >= 3) {
+    //     // console.log(streamedTweets);
+    //     let users = [];
+    //     const promiseForUsers = getUsersFromRTs(streamedTweets);
+    //     promiseForUsers
+    //     .then((rtUsers) => {
+    //         const moreTweets = getTweetsFromRTUsers(rtUsers.splice(0, 20), 'MAGA');
+    //         console.log(moreTweets);
+    //         stream.stop();
+    //     })
+    //     .catch(console.error);
+    // }
+// })
 
-stream.on('limit', (message) => {
-    console.log('LIMIT', message);
-})
+// stream.on('limit', (message) => {
+//     console.log('LIMIT', message);
+// })
 
-removeLeastRTd = (tweetsArr) => {
+const removeLeastRTd = (tweetsArr) => {
     return tweetsArr.filter(tweet => {
         return tweet.retweet_count >= 5;
     });
 }
 
-sortByRTs = (tweetsArr) => {
+const sortByRTs = (tweetsArr) => {
     return tweetsArr.sort((a, b) => {
         return b.retweet_count - a.retweet_count;
     });
 }
 
-getUsersFromRTs = (tweetsArr) => {
+const getUsersFromRTs = (tweetsArr) => {
     let retweetedUsers = [];
 
     // Get Promise for RTers
     return Promise.map(tweetsArr, tweet => {
-        return T.get(`statuses/retweeters/ids`, {id: tweet.id_str})
+        return Twitter.get(`statuses/retweeters/ids`, {id: tweet.id_str})
     })
     .then(foundUsers => {
         foundUsers.forEach(foundUser => {
@@ -78,13 +97,14 @@ getUsersFromRTs = (tweetsArr) => {
     .catch(console.error)
 }
 
-getTweetsFromRTUsers = (usersArr, term) => {
+const getTweetsFromRTUsers = (usersArr, term) => {
     const termLower = term.toLowerCase();
+    console.log(usersArr);
     return Promise.map(usersArr, user => {
-        return T.get('statuses/user_timeline', {user_id: user.id_str, include_rts: false, count: 10})
+        return Twitter.get('statuses/user_timeline', {user_id: user.toString(), include_rts: false, count: 10})
     })
     .then(foundTweets => {
-        console.log(foundTweets);
+        console.log(foundTweets.data);
         return foundTweets.filter(foundTweet => {
             if (foundTweet.truncated) {
                 return foundTweet.extended_tweet.full_text.toLowerCase() === termLower;
@@ -102,7 +122,7 @@ getTweetsFromRTUsers = (usersArr, term) => {
 // If tweets from API are RTs or Quoted Tweets we want to go
 // From the original tweet so we'll have a good origin point
 // from which we can expand
-scrubTweet = (tweet) => {
+const scrubTweet = (tweet) => {
     if (tweet.retweeted_status && tweet.retweeted_status.retweet_count) {
         tweet = tweet.retweeted_status;
     }
@@ -111,3 +131,5 @@ scrubTweet = (tweet) => {
     }
     return tweet;
 }
+
+module.exports = twitRouter;

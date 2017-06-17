@@ -1,34 +1,52 @@
-import React from 'react';
+import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { Link } from 'react-router';
 import { logout } from '../reducer/user';
-
+import SearchForm from './SearchForm';
+import GMap from './Map';
+import clientSocket from '../socket';
 // Component //
 
-const Main = props => {
-
-  const { children } = props;
-
-  return (
-    <div>
-      <h1>BOILERMAKER</h1>
-      <hr />
-      { children }
-    </div>
-  );
-};
-
-// Container //
-
-const mapState = ({ user }) => ({
-  loggedIn: !!user.id
-});
-
-const mapDispatch = dispatch => ({
-  handleClick () {
-    dispatch(logout());
+class Main extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      term: ''
+    }
+    this.onSubmit = this.onSubmit.bind(this);
+    this.handleChange = this.handleChange.bind(this);
   }
-});
 
-export default connect(mapState, mapDispatch)(Main);
+  handleChange(event) {
+    this.setState({
+      term: event.target.value
+    })
+  }
+
+  onSubmit(event) {
+      event.preventDefault();
+      clientSocket.emit('term', this.state.term)
+  }
+
+  render() {
+    const { children } = this.props
+    return (
+      <div>
+        <h1>Tweet Heat</h1>
+        <div id="container">
+          <SearchForm
+            submitHandler={this.onSubmit}
+            handleChange={this.handleChange}
+            term={this.state.term}
+          />
+          <GMap />
+        </div>
+        <hr />
+        { children }
+      </div>
+  );
+  }
+}
+
+export default Main;

@@ -7,12 +7,10 @@ import { Router, Route, browserHistory, IndexRoute } from 'react-router';
 import store from './store';
 import { Main } from './components';
 
-
 ReactDOM.render(
   <Provider store={store}>
     <Router history={browserHistory}>
-      <Route path="/" component={Main}>
-      </Route>
+      <Route path="/" component={Main} />
     </Router>
   </Provider>,
   document.getElementById('app')

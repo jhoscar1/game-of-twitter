@@ -38,6 +38,13 @@ app
 // const syncDb = () =>
 //   db.sync();
 
+// const searchTweets = (term, max_id) => {
+//   const options = max_id ? {q: term, count:100, exclude: "retweets"} : {q: term, count:100, exclude: "retweets", max_id: max_id};
+//     Twitter.get('search/tweets', options, (err, data, response) => {
+//         if (err) console.error(err);
+//     })
+// }
+
 const server = app.listen(PORT, () =>
     console.log(`Mixing it up on port ${PORT}`));
 
@@ -45,18 +52,42 @@ const io = socketio(server);
 
 io.sockets.on('connection', (socket) => {
   console.log('connected');
+  let interval;
   socket.on('term', (term) => {
     // const stream = Twitter.stream('statuses/filter', {track: term, language: 'en'});
+    let maxId;
+    let i = 0;
+    interval = setInterval(() => {
+      const options = {q: term, count: 25, exclude: "retweets", max_id: maxId};
+      Twitter.get('search/tweets', options, (err, data, response) => {
+          if (err) console.error(err);
+          data.statuses.forEach(tweet => {
+            if (maxId > tweet.id || !maxId) {
+              maxId = tweet.id;
+            }
+          })
+          
+          
 
-    Twitter.get('search/tweets', {q: term, count:200, exclude: "retweets"}, (err, data, response) => {
-        if (err) console.error(err);
-        const locatedTweets = data.statuses.filter((tweet) => {
-          if (tweet.coordinates && tweet.coordinates !== null) {
-            return tweet
-          }
-        })
-        socket.emit('tweet', locatedTweets)
-    })  
+          socket.emit('tweet', data.statuses);
+      })
+      i++;
+      if (i >= 6) {
+        clearInterval(interval);
+      }
+    }, 2000)
+
+
+
+    // Twitter.get('search/tweets', {q: term, count:100, exclude: "retweets"}, (err, data, response) => {
+    //     if (err) console.error(err);
+    //     const locatedTweets = data.statuses.filter((tweet) => {
+    //       if (tweet.coordinates && tweet.coordinates !== null) {
+    //         return tweet
+    //       }
+    //     })
+    //     socket.emit('tweet', locatedTweets)
+    // })  
 
     // stream.on('tweet', (newTweet) => {
     //   const scrubbedTweet = scrubTweet(newTweet);
@@ -71,15 +102,3 @@ io.sockets.on('connection', (socket) => {
   })
 })
 
-// This evaluates as true when this file is run directly from the command line,
-// i.e. when we say 'node server/index.js' (or 'nodemon server/index.js', or 'nodemon server', etc)
-// It will evaluate false when this module is required by another module - for example,
-// if we wanted to require our app in a test spec
-// if (require.main === module) {
-//   store.sync()
-//     .then(syncDb)
-//     .then(createApp)
-//     .then(listenUp);
-// } else {
-//   createApp(app);
-// }

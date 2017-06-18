@@ -25,7 +25,6 @@ router.get('/search/:term', (req, res, next) => {
         })
 
         Promise.map(data.statuses, tweet => {
-            console.log('hi');
             return Google.detectSentiment(tweet.text)
             .then((results) => {
                 //console.log('logged results', results);
@@ -48,7 +47,10 @@ router.get('/search/:term', (req, res, next) => {
 })
 
 router.get('/tweet/country', (req, res, next) => {
-
+    Twitter.get('geo/search', {lat: 37.09024, long:-95.712891, granularity: 'city'}, (err, data, response) => {
+        if (err) console.error(err);
+        console.log(data.result);
+    })
 })
 
 router.get('/stream/:term', (req, res, next) => {

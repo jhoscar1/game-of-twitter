@@ -10,7 +10,6 @@ const PORT = process.env.PORT || 8080;
 const app = express();
 const socketio = require('socket.io');
 const Twitter = require('./api/twitter').Twitter;
-const scrubTweet = require('./api/twitter').scrubTweet;
 module.exports = app;
 
 if (process.env.NODE_ENV === 'development') require('../secrets');
@@ -66,10 +65,25 @@ io.sockets.on('connection', (socket) => {
               maxId = tweet.id;
             }
           })
-          
-          
-
-          socket.emit('tweet', data.statuses);
+          Promise.map(data.statuses, tweet => {
+            return Google.detectSentiment(tweet.text)
+            .then((results) => {
+                //console.log('logged results', results);
+                const sentiment = results[0];
+                const analysis = {
+                    user: tweet.user,
+                    coordinates: tweet.coordinates,
+                    tweet: tweet.text,
+                    score: sentiment.score,
+                    magnitude: sentiment.magnitude
+                }
+                return analysis;
+            })
+            .catch(console.error)
+          })
+          .then(sentiments => {
+            socket.emit('tweet', sentiments);
+          });
       })
       i++;
       if (i >= 6) {

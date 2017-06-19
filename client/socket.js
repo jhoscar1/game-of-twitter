@@ -2,20 +2,26 @@ import io from 'socket.io-client'
 import {map} from './components/Map'
 const clientSocket = io(window.location.origin);
 
-const makeCircle = (center) => {
+const makeCircle = (center, sentimentScore, sentimentMag) => {
+    let color = sentimentScore > 0 ? '#7800ce' : '#FF0000';
+    if (sentimentScore === 0) {
+        color = '#ffffff';
+    }
     return new google.maps.Circle({
-        strokeColor: '#FF0000',
+        strokeColor: color,
         strokeOpacity: 0.8,
         strokeWeight: 2,
-        fillColor: '#FF0000',
+        fillColor: color,
         fillOpacity: 0.35,
         map: map,
         center: center,
         clickable: true,
-        radius: 1000000
+        radius: 1000 * sentimentMag * 750
     });
 }
 
+export const allMarkers = [];
+const allTweets = [];
 (() => {
     clientSocket.on('tweet', (tweets) => {
         const geocoder = new google.maps.Geocoder;
@@ -28,19 +34,13 @@ const makeCircle = (center) => {
                 geocoder.geocode({address: tweet.user.location}, (results, status) => {
                     if (results) {
                         results.forEach(result => {
-                        //     const marker = new google.maps.Marker({
-                        //         map: map,
-                        //         place: {
-                        //             placeId: result.place_id,
-                        //             location: result.geometry.location
-                        //         }
-                        //     })
-                            const marker = makeCircle(result.geometry.location);
+                            const marker = makeCircle(result.geometry.location, tweet.score, tweet.magnitude);
                             marker.addListener('click', () => {
                                 infowindow.setPosition(result.geometry.location);
                                 infowindow.open(map, marker);
                             });
                             tweet.marker = marker;
+                            allMarkers.push(marker);
                         });
                     }
                 })
@@ -52,16 +52,19 @@ const makeCircle = (center) => {
                 //     map: map,
                 //     position: new google.maps.LatLng(lat, long)
                 // })
-                const marker = makeCircle(center)
+                const marker = makeCircle(center, tweet.score, tweet.magnitude)
                 marker.addListener('click', () => {
                     infowindow.setPosition(center);
                     infowindow.open(map, marker);
                 })
                 tweet.marker = marker;
+                allMarkers.push(marker);
             }
         })
         
     })
+
+    clientSocket.on('step', () => {});
 })();
 
 export default clientSocket;

@@ -93,10 +93,6 @@ const streamedTweets = [];
     // }
 // })
 
-// stream.on('limit', (message) => {
-//     console.log('LIMIT', message);
-// })
-
 const removeLeastRTd = (tweetsArr) => {
     return tweetsArr.filter(tweet => {
         return tweet.retweet_count >= 5;
@@ -117,6 +113,7 @@ const getUsersFromRTs = (tweetsArr) => {
         return Twitter.get(`statuses/retweeters/ids`, {id: tweet.id_str})
     })
     .then(foundUsers => {
+        console.log('users', foundUsers);
         foundUsers.forEach(foundUser => {
             if (foundUser.data.errors) throw foundUser.data.errors
             retweetedUsers = retweetedUsers.concat(foundUser.data.ids);
@@ -161,8 +158,57 @@ const scrubTweet = (tweet) => {
     return tweet;
 }
 
+const getProcessTweets = (term, webSocket) => {
+    const nextStepTweets = [];
+    let maxId;
+    let i = 0;
+    console.log('here');
+    const interval = setInterval(() => {
+      const options = {q: term, count: 25, exclude: "retweets", max_id: maxId, lang: 'en'};
+      Twitter.get('search/tweets', options, (err, data, response) => {
+          if (err) console.error(err);
+          if (!data.statuses) return;
+          data.statuses.forEach(tweet => {
+            if (maxId > tweet.id || !maxId) {
+              maxId = tweet.id;
+            }
+          })
+          return Promise.map(data.statuses, tweet => {
+            return Google.detectSentiment(tweet.text)
+            .then((results) => {
+                const sentiment = results[0];
+                const analysis = {
+                    id_str: tweet.id_str,
+                    user: tweet.user,
+                    coordinates: tweet.coordinates,
+                    text: tweet.text,
+                    score: sentiment.score,
+                    magnitude: sentiment.magnitude,
+                    retweetCount: tweet.retweet_count
+                }
+                nextStepTweets.push(analysis);
+                return analysis;
+            })
+            .catch(console.error)
+          })
+          .then(sentiments => {
+            webSocket.emit('tweet', sentiments);
+          })
+          .catch(console.error);
+      })
+      i++;
+      if (i >= 5) {
+        clearInterval(interval);
+      }
+    }, 2000)
+    return nextStepTweets;
+}
+
 module.exports = {
     Twitter,
     scrubTweet,
-    router
+    router,
+    getUsersFromRTs,
+    getTweetsFromRTUsers,
+    getProcessTweets
 };

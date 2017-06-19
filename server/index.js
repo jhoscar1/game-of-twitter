@@ -10,6 +10,11 @@ const PORT = process.env.PORT || 8080;
 const app = express();
 const socketio = require('socket.io');
 const Twitter = require('./api/twitter').Twitter;
+const getUsersFromRTs = require('./api/twitter').getUsersFromRTs;
+const getProcessTweets = require('./api/twitter').getProcessTweets;
+const getTweetsFromRTUsers = require('./api/twitter').getTweetsFromRTUsers;
+const Google = require('./api/google');
+const Promise = require('bluebird');
 module.exports = app;
 
 if (process.env.NODE_ENV === 'development') require('../secrets');
@@ -51,57 +56,10 @@ const io = socketio(server);
 
 io.sockets.on('connection', (socket) => {
   console.log('connected');
-  let interval;
+  let tweetsForNextSteps;
   socket.on('term', (term) => {
     // const stream = Twitter.stream('statuses/filter', {track: term, language: 'en'});
-    let maxId;
-    let i = 0;
-    interval = setInterval(() => {
-      const options = {q: term, count: 25, exclude: "retweets", max_id: maxId};
-      Twitter.get('search/tweets', options, (err, data, response) => {
-          if (err) console.error(err);
-          data.statuses.forEach(tweet => {
-            if (maxId > tweet.id || !maxId) {
-              maxId = tweet.id;
-            }
-          })
-          Promise.map(data.statuses, tweet => {
-            return Google.detectSentiment(tweet.text)
-            .then((results) => {
-                //console.log('logged results', results);
-                const sentiment = results[0];
-                const analysis = {
-                    user: tweet.user,
-                    coordinates: tweet.coordinates,
-                    tweet: tweet.text,
-                    score: sentiment.score,
-                    magnitude: sentiment.magnitude
-                }
-                return analysis;
-            })
-            .catch(console.error)
-          })
-          .then(sentiments => {
-            socket.emit('tweet', sentiments);
-          });
-      })
-      i++;
-      if (i >= 6) {
-        clearInterval(interval);
-      }
-    }, 2000)
-
-
-
-    // Twitter.get('search/tweets', {q: term, count:100, exclude: "retweets"}, (err, data, response) => {
-    //     if (err) console.error(err);
-    //     const locatedTweets = data.statuses.filter((tweet) => {
-    //       if (tweet.coordinates && tweet.coordinates !== null) {
-    //         return tweet
-    //       }
-    //     })
-    //     socket.emit('tweet', locatedTweets)
-    // })  
+    tweetsForNextSteps = getProcessTweets(term, socket);
 
     // stream.on('tweet', (newTweet) => {
     //   const scrubbedTweet = scrubTweet(newTweet);
@@ -111,6 +69,17 @@ io.sockets.on('connection', (socket) => {
     //   //}
     // })
   })
+
+  socket.on('step', (term) => {
+    const promisedUsersArr = getUsersFromRTs(tweetsForNextSteps.splice(0, 25));
+    promisedUsersArr
+    .then((usersArr) => {
+      console.log(usersArr);
+      //const moreTweets = getTweetsFromRTUsers(usersArr.splice(0, 25), term);
+      console.log('moooore');
+    })
+  })
+
   socket.on('disconnect', () => {
     console.log('disconnected...');
   })

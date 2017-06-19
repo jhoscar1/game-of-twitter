@@ -5,17 +5,19 @@ import { Link } from 'react-router';
 import { logout } from '../reducer/user';
 import SearchForm from './SearchForm';
 import GMap from './Map';
-import clientSocket from '../socket';
-// Component //
+import clientSocket, {allMarkers} from '../socket';
+import {map} from './Map'
 
 class Main extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      term: ''
+      term: '',
+      stepTerm: ''
     }
     this.onSubmit = this.onSubmit.bind(this);
     this.handleChange = this.handleChange.bind(this);
+    this.resetGame = this.resetGame.bind(this);
   }
 
   handleChange(event) {
@@ -24,11 +26,24 @@ class Main extends Component {
     })
   }
 
+  resetGame() {
+    allMarkers.forEach(marker => {
+      marker.setMap(null);
+    });
+    this.setState({
+      term: '',
+      stepTerm: ''
+    })
+    clientSocket.disconnect();
+    clientSocket.connect();
+  }
+
   onSubmit(event) {
       event.preventDefault();
       clientSocket.emit('term', this.state.term)
       this.setState({
-        term: ''
+        term: '',
+        stepTerm: this.state.term
       })
   }
 
@@ -42,6 +57,8 @@ class Main extends Component {
             submitHandler={this.onSubmit}
             handleChange={this.handleChange}
             term={this.state.term}
+            stepTerm={this.state.stepTerm}
+            clear={this.resetGame}
           />
           <GMap />
         </div>

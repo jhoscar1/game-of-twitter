@@ -10,8 +10,8 @@ class Map extends Component {
 
     componentDidMount() {
         map = new google.maps.Map(document.getElementById('map'), {
-            zoom: 4,
-            center: {lat: 40.750120, lng: -73.985099}
+            zoom: 5,
+            center: {lat: 39, lng: -95}
         })
     }
 

@@ -113,7 +113,6 @@ const getUsersFromRTs = (tweetsArr) => {
         return Twitter.get(`statuses/retweeters/ids`, {id: tweet.id_str})
     })
     .then(foundUsers => {
-        console.log('users', foundUsers);
         foundUsers.forEach(foundUser => {
             if (foundUser.data.errors) throw foundUser.data.errors
             retweetedUsers = retweetedUsers.concat(foundUser.data.ids);
@@ -124,25 +123,30 @@ const getUsersFromRTs = (tweetsArr) => {
 }
 
 const getTweetsFromRTUsers = (usersArr, term) => {
+    console.log('term', term)
     const termLower = term.toLowerCase();
-    console.log(usersArr);
     return Promise.map(usersArr, user => {
-        return Twitter.get('statuses/user_timeline', {user_id: user.toString(), include_rts: false, count: 10})
+        return Twitter.get('statuses/user_timeline', {user_id: user.toString(), include_rts: false, count: 100})
     })
     .then(foundTweets => {
-        console.log(foundTweets.data);
-        return foundTweets.filter(foundTweet => {
-            if (foundTweet.truncated) {
-                return foundTweet.extended_tweet.full_text.toLowerCase() === termLower;
-            }
-            else {
-                return foundTweet.text.toLowerCase() === termLower;
-            }
-        }).sort((a, b) => {
-            return b.retweet_count - a.retweet_count;
-        })
-        .splice(0, 1);
+        console.log('found', foundTweets);
+        let finalUserTweets = [];
+        if (foundTweets.length) {
+            foundTweets.forEach(foundTweet => {
+                if (Array.isArray(foundTweet.data)) {
+                    finalUserTweets = finalUserTweets.concat(/*foundTweet.data.filter(userTweet => {
+                        return userTweet.text.toLowerCase().indexOf(termLower) > -1;
+                    }).sort((a, b) => {
+                        return b.retweet_count - a.retweet_count;
+                    })*/
+                    foundTweet.data.splice(0, 1));
+                }
+            })
+        }
+        return finalUserTweets;
+
     })
+    .catch(console.error);
 }
 
 // If tweets from API are RTs or Quoted Tweets we want to go
@@ -210,5 +214,6 @@ module.exports = {
     router,
     getUsersFromRTs,
     getTweetsFromRTUsers,
-    getProcessTweets
+    getProcessTweets,
+    sortByRTs
 };

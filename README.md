@@ -1,37 +1,23 @@
-# Boilermaker
+# The Game of Twitter
 
-*Good things come in pairs*
-
-Looking to mix up a backend with express/sequelize and a frontend with react/redux? That's `boilermaker`!
-
-Follow along with the workshop to make your own! This canonical version can serve as a reference, or a starting point all on its own.
-
-## Setup
-
-To use this boilerplate, you'll need to take the following steps:
-
-* `npm install`, or `yarn install` - whatever you're into
-* Create two postgres databases: `boilermaker` and `boilermaker-test`
-  * By default, running `npm test` will use `boilermaker-test`, while regular development uses `boilermaker`
-* Create a file called `secrets.js` in the project root
-  * This file is `.gitignore`'d, and will *only* be required in your *development* environment
-  * Its purpose is to attach the secret env variables that you'll use while developing
-  * However, it's **very** important that you **not** push it to Github! Otherwise, *prying eyes* will find your secret API keys!
-  * It might look like this:
-
-  ```
-    process.env.GOOGLE_CLIENT_ID = 'hush hush';
-    process.env.GOOGLE_CLIENT_SECRET = 'pretty secret';
-    process.env.GOOGLE_CALLBACK = '/auth/google/callback';
-  ```
-
-* To use OAuth with Google, complete the step above with a real client ID and client secret from Google
-  * You can get them here: https://console.developers.google.com/apis/credentials
+This project was inspired by John Conway's Game of Life but applied to Twitter conversations. My concept was aimed at tracking a sampling of a Twitter conversation and its location and sentiment over many rounds. To do this I queried the Twitter API with a keyword and get a seed round of tweets, their text and location. I then passed the text of those tweets to Google's Natural Language Processing API to get a sentiment analysis of these tweets and then to Google Maps API to plot their location. The step feature which is currently a WIP, was designed to take a user who retweeted one of the seed tweets and grab a tweet from their timeline with the keyword. Additionally, the seed tweets with the fewest retweets would be removed from the list. This effect would simulate the spread and propogation of the sentiment and geography of a conversation on Twitter. I believe that this simulation could be a thought provoking, live insight into the evolution of an online dialogue.
 
 ## Start
 
-`npm start` will make great things happen!
+To run locally you will need to:
 
-If you want to run the server and/or webpack separately, you can also `npm run start-server` and `npm run build-client`.
+Create a file called secrets.js in the project root
 
-From there, just follow your bliss.
+This file is .gitignore'd, and will only be required in your development environment
+Its purpose is to attach the secret env variables that you'll use while developing
+However, it's very important that you not push it to Github! Otherwise, prying eyes will find your secret API keys!
+It might look like this:
+``` 
+  process.env.GOOGLE_CLIENT_ID = 'hush hush';
+  process.env.GOOGLE_CLIENT_SECRET = 'pretty secret';
+  process.env.GOOGLE_CALLBACK = '/auth/google/callback';
+```
+
+Additionally, you will need to set up APIs for Google Maps, Google Natural Language Processing and appropriate Twitter developer keys.
+
+Once those are set up and added to the secrets.js file just run `npm start`!

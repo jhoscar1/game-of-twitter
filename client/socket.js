@@ -16,7 +16,7 @@ const makeCircle = (center, sentimentScore, sentimentMag) => {
         map: map,
         center: center,
         clickable: true,
-        radius: 1000 * sentimentMag * 750
+        radius: 1000 * sentimentMag * 500
     });
 }
 

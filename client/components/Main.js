@@ -51,7 +51,7 @@ class Main extends Component {
     const { children } = this.props
     return (
       <div>
-        <h1>Tweet Heat</h1>
+        <h1 id="site-name">Game of Twitter</h1>
         <div id="container">
           <SearchForm
             submitHandler={this.onSubmit}

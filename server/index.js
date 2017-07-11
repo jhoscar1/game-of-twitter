@@ -13,6 +13,7 @@ const Twitter = require('./api/twitter').Twitter;
 const getUsersFromRTs = require('./api/twitter').getUsersFromRTs;
 const getProcessTweets = require('./api/twitter').getProcessTweets;
 const getTweetsFromRTUsers = require('./api/twitter').getTweetsFromRTUsers;
+const sortByRTs = require('./api/twitter').sortByRTs;
 const Google = require('./api/google');
 const Promise = require('bluebird');
 module.exports = app;
@@ -71,13 +72,25 @@ io.sockets.on('connection', (socket) => {
   })
 
   socket.on('step', (term) => {
-    const promisedUsersArr = getUsersFromRTs(tweetsForNextSteps.splice(0, 25));
+    console.log('term', term);
+    const sortedTweets = sortByRTs(tweetsForNextSteps);
+    sortedTweets.forEach(tfns => {
+      console.log(tfns.retweetCount)
+    })
+    const promisedUsersArr = getUsersFromRTs(sortedTweets.splice(0, 15));
     promisedUsersArr
     .then((usersArr) => {
-      console.log(usersArr);
-      //const moreTweets = getTweetsFromRTUsers(usersArr.splice(0, 25), term);
-      console.log('moooore');
+      console.log('usersArr', usersArr);
+      const spliceLength = usersArr.length < 25 ? usersArr.length : 25;
+      const moreTweets = getTweetsFromRTUsers(usersArr.splice(0, spliceLength), term);
+      return moreTweets
     })
+    .then((userTweets) => {
+      if (!userTweets.length) console.log('NO RTs');
+      console.log('more tweets?', userTweets);
+      socket.emit('tweet', userTweets);
+    })
+    .catch(console.error);
   })
 
   socket.on('disconnect', () => {

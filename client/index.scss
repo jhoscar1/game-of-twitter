@@ -1,5 +1,6 @@
 body {
-  font-family: sans-serif;
+  font-family: "Helvetica Neue", sans-serif;
+  background-color: #00aced;
 
   a {
     text-decoration: none;
@@ -17,5 +18,10 @@ body {
   form div {
     margin: 1em;
     display: inline-block;
+  }
+
+  #site-name {
+    padding-left: 15px;
+    color: white;
   }
 }
